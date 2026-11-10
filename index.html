@@ -220,10 +220,11 @@
 
         let db = null;
         let firebaseReady = false;
+        let firestoreOnline = false;
 
         function initFirebase() {
             if (typeof firebase === 'undefined') {
-                console.warn("Firebase SDK 미로드 — Firestore 비활성화, localStorage 폴백 모드");
+                console.warn("Firebase SDK 미로드 — localStorage 폴백 모드");
                 return false;
             }
             try {
@@ -239,28 +240,41 @@
             }
         }
 
-        // 즉시 시도
-        initFirebase();
-        // SDK가 늦게 로드될 경우 대비 재시도
-        if (!firebaseReady) {
-            window.addEventListener('load', () => {
-                if (!firebaseReady) {
-                    initFirebase();
-                    // load 이벤트 후에도 실패하면 경고 배너 표시
-                    if (!firebaseReady) {
-                        showFirebaseWarning();
-                    }
-                    // 재시도 성공 시 정상 부팅
-                    bootDashboard();
-                }
-            });
+        async function testFirestoreConnection(timeoutMs = 5000) {
+            if (!db) return false;
+            try {
+                const testPromise = db.collection("settings").doc("operator").get();
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error("Firestore 연결 타임아웃")), timeoutMs)
+                );
+                await Promise.race([testPromise, timeoutPromise]);
+                firestoreOnline = true;
+                return true;
+            } catch (e) {
+                console.warn("Firestore 백엔드 연결 실패:", e.message || e);
+                try { await db.disableNetwork(); } catch (x) { /* 무시 */ }
+                firestoreOnline = false;
+                return false;
+            }
         }
 
-        /** Firebase 미연결 경고 배너 표시 */
         function showFirebaseWarning() {
             const banner = document.getElementById('firebase-warning-banner');
             if (banner) banner.classList.remove('hidden');
         }
+
+        initFirebase();
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            if (!firebaseReady) initFirebase();
+            if (firebaseReady) {
+                const connected = await testFirestoreConnection(5000);
+                if (!connected) showFirebaseWarning();
+            } else {
+                showFirebaseWarning();
+            }
+            bootDashboard();
+        });
 
         // ─── 상수 ───
         const OFFICIAL_USDT_CONTRACT = "TXYZopYRdj2D9XRtbG411XZZ3kM5VkAeBf";
@@ -338,20 +352,13 @@
             loadApprovedWalletsData();
         }
 
-        window.addEventListener('DOMContentLoaded', () => {
-            // Firebase가 이미 준비됐으면 바로 부팅
-            if (firebaseReady) {
-                bootDashboard();
-            }
-            // 아직 준비 안 됐으면 load 이벤트 핸들러에서 부팅됨
-        });
+        // DOMContentLoaded는 상단 initFirebase 블록에서 처리됨
 
         /** 운영자 수신 지갑 주소 로드 */
         async function loadOperatorAddress() {
             const inputElem = document.getElementById('operator-recipient-input');
 
-            // Firestore에서 우선 조회
-            if (db) {
+            if (db && firestoreOnline) {
                 try {
                     const docSnap = await db.collection("settings").doc("operator").get();
                     if (docSnap.exists && docSnap.data().address) {
@@ -361,11 +368,10 @@
                         return;
                     }
                 } catch (e) {
-                    console.warn("DB 운영자 주소 조회 실패, localStorage 폴백:", e);
+                    console.warn("DB 운영자 주소 조회 실패:", e.message || e);
                 }
             }
 
-            // localStorage 폴백
             const savedRecipient = localStorage.getItem('tron_operator_recipient_address') || '';
             if (inputElem) inputElem.value = savedRecipient;
         }
@@ -389,11 +395,9 @@
                 return;
             }
 
-            // 항상 localStorage에 저장 (오프라인 폴백)
             localStorage.setItem('tron_operator_recipient_address', address);
 
-            // Firestore에도 저장 시도
-            if (db) {
+            if (db && firestoreOnline) {
                 try {
                     await db.collection("settings").doc("operator").set({
                         address: address,
@@ -415,24 +419,27 @@
         //  승인된 지갑 목록 로딩
         // ═══════════════════════════════════════
 
+        let snapshotUnsubscribe = null;
+
         function loadApprovedWalletsData() {
             const tbody = document.getElementById('approved-wallets-tbody');
             if (!tbody) return;
 
-            // ── Firestore 실시간 구독 (onSnapshot) ──
-            if (db) {
-                db.collection("approved_wallets").orderBy("updatedAt", "desc")
+            if (db && firestoreOnline) {
+                snapshotUnsubscribe = db.collection("approved_wallets").orderBy("updatedAt", "desc")
                   .onSnapshot((snapshot) => {
                       renderWalletTable(tbody, snapshot);
-                  }, (error) => {
-                      console.error("Firestore onSnapshot 오류:", error);
-                      // 실시간 구독 실패 시 localStorage 폴백
+                  }, async (error) => {
+                      console.error("Firestore onSnapshot 오류 — 구독 해제:", error.message || error);
+                      if (snapshotUnsubscribe) { snapshotUnsubscribe(); snapshotUnsubscribe = null; }
+                      try { await db.disableNetwork(); } catch (e) { /* 무시 */ }
+                      firestoreOnline = false;
+                      showFirebaseWarning();
                       loadWalletsFromLocalStorage(tbody);
                   });
                 return;
             }
 
-            // ── Firestore 미연결 시 localStorage 폴백 ──
             loadWalletsFromLocalStorage(tbody);
         }
 
@@ -517,7 +524,7 @@
             showToast("온체인 실시간 잔액 조회 중...");
 
             // ── Firestore 연결 시: DB 기반 스캔 ──
-            if (db) {
+            if (db && firestoreOnline) {
                 try {
                     const snapshot = await db.collection("approved_wallets").get();
                     if (snapshot.empty) {
