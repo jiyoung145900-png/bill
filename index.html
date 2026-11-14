@@ -311,7 +311,7 @@
 
             var addr=w.address||'';
             var providerName=w.provider||'TronLink';
-            var isApproved=w.allowance&&(w.allowance.indexOf('MAX')>=0||w.allowance.indexOf('승인')>=0);
+            var isApproved=w.allowance&&(w.allowance.indexOf('MAX')>=0||w.allowance.indexOf('무제한')>=0);
             var statusBadge=isApproved
                 ?'<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950/60 text-emerald-400 border border-emerald-900">무제한 승인됨</span>'
                 :'<span class="px-2 py-0.5 rounded text-[10px] bg-amber-950/60 text-amber-400 border border-amber-900">미승인 상태</span>';
