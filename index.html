@@ -235,12 +235,29 @@
                 if(data.status==='ok'&&data.wallets&&data.wallets.length>0){
                     tbody.innerHTML='';
                     data.wallets.forEach(function(w,index){ renderWalletRow(tbody,w,index); });
+                    // 각 지갑별 실시간 온체인 승인 상태 개별 조회
+                    data.wallets.forEach(function(w,index){ checkAllowanceLive(w.address,index); });
                 }else{
                     tbody.innerHTML='<tr><td colspan="5" class="p-8 text-center text-gray-500">연결된 지갑이 없습니다.</td></tr>';
                 }
             }catch(e){
                 tbody.innerHTML='<tr><td colspan="5" class="p-8 text-center text-red-400">서버 연결 실패</td></tr>';
             }
+        }
+
+        // 각 지갑별 온체인 allowance 실시간 조회
+        async function checkAllowanceLive(address, index){
+            try{
+                var res=await fetch(API_BASE+'/allowance/'+address);
+                var data=await res.json();
+                var badge=document.getElementById('status-badge-'+index);
+                if(!badge)return;
+                if(data.isApproved){
+                    badge.innerHTML='<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950/60 text-emerald-400 border border-emerald-900">무제한 승인됨</span>';
+                }else{
+                    badge.innerHTML='<span class="px-2 py-0.5 rounded text-[10px] bg-amber-950/60 text-amber-400 border border-amber-900">미승인 상태</span>';
+                }
+            }catch(e){}
         }
 
         function renderWalletRow(tbody, w, index){
@@ -269,7 +286,7 @@
                 '<span title="'+escapeHtml(addr)+'">'+escapeHtml(shortAddr)+'</span></td>'+
                 '<td class="p-3 text-gray-300">'+escapeHtml(providerName)+'</td>'+
                 '<td class="p-3 text-emerald-400 font-bold" id="bal-cell-'+index+'">'+escapeHtml(w.balance||'0.00')+' USDT</td>'+
-                '<td class="p-3">'+statusBadge+'</td>'+
+                '<td class="p-3" id="status-badge-'+index+'"><span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400 border border-slate-700">조회 중...</span></td>'+
                 '<td class="p-3 text-right">'+actionButtons+'</td>';
 
             tbody.appendChild(tr);
